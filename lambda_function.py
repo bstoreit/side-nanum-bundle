@@ -149,11 +149,11 @@ def login(event):
                 org = cur.fetchone()
                 
                 if not org:
-                    return _resp(401, {"ok": False, "message": "매핑된 기관정보가 없습니다."}, event)
+                    return _resp(401, {"ok": False, "message": "등록되지 않은 사업자번호입니다."})
                 
                 # 비밀번호 확인 (실제로는 해시 비교해야 함)
                 if org["password_hash"] != password:  # 임시로 평문 비교
-                    return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."}, event)
+                    return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
                 
                 # JWT 토큰 발급
                 token = issue_jwt(org["org_id"])
@@ -166,10 +166,10 @@ def login(event):
                         "orgName": org["org_name"],
                         "businessNumber": business_number
                     }
-                }, event)
+                })
                 
     except Exception as e:
-        return _resp(500, {"ok": False, "message": f"로그인 처리 중 오류가 발생했습니다: {str(e)}"}, event)
+        return _resp(500, {"ok": False, "message": f"로그인 처리 중 오류가 발생했습니다: {str(e)}"})
 
 # 토큰 검증 함수
 def verify_token(event):
