@@ -19,18 +19,32 @@ const Header = styled.header`
   justify-content: space-between;
   align-items: center;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+
+  @media (max-width: 768px) {
+    padding: 0.75rem 1rem;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
 `;
 
 const LogoContainer = styled.div`
   display: flex;
   align-items: center;
   gap: 1rem;
+
+  @media (max-width: 768px) {
+    gap: 0.5rem;
+  }
 `;
 
 const LogoImage = styled.img`
   height: 40px;
   width: auto;
   object-fit: contain;
+
+  @media (max-width: 768px) {
+    height: 32px;
+  }
 `;
 
 const Separator = styled.div`
@@ -45,18 +59,34 @@ const Logo = styled.div`
   font-weight: 700;
   color: white;
   white-space: nowrap;
+
+  @media (max-width: 768px) {
+    font-size: 1rem;
+    white-space: normal;
+    text-align: center;
+  }
 `;
 
 const UserInfo = styled.div`
   display: flex;
   align-items: center;
   gap: 1rem;
+
+  @media (max-width: 768px) {
+    gap: 0.5rem;
+    flex-direction: column;
+  }
 `;
 
 const BusinessName = styled.span`
   font-size: 1.1rem;
   font-weight: 500;
   color: #374151;
+
+  @media (max-width: 768px) {
+    font-size: 1rem;
+    text-align: center;
+  }
 `;
 
 const LogoutButton = styled.button`
@@ -71,6 +101,11 @@ const LogoutButton = styled.button`
   &:hover {
     background-color: #dc2626;
   }
+
+  @media (max-width: 768px) {
+    padding: 0.5rem 1.5rem;
+    font-size: 0.85rem;
+  }
 `;
 
 const MainContent = styled.div`
@@ -79,6 +114,7 @@ const MainContent = styled.div`
 
   @media (max-width: 768px) {
     flex-direction: column;
+    min-height: calc(100vh - 120px);
   }
 `;
 
@@ -90,6 +126,7 @@ const LeftPanel = styled.div`
   @media (max-width: 768px) {
     padding: 1rem;
     flex: none;
+    order: 2;
   }
 `;
 
@@ -106,6 +143,13 @@ const AddGroupButton = styled.button`
   &:hover {
     transform: translateY(-1px);
   }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
 `;
 
 const RightPanel = styled.div`
@@ -121,7 +165,8 @@ const RightPanel = styled.div`
     border-top: 1px solid #e5e7eb;
     min-width: auto;
     flex: none;
-    max-height: 50vh;
+    max-height: 60vh;
+    order: 1;
   }
 `;
 

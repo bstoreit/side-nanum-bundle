@@ -9,6 +9,12 @@ const LoginContainer = styled.div`
   justify-content: center;
   background: #85a65c;
   padding: 2rem;
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+    align-items: flex-start;
+    padding-top: 2rem;
+  }
 `;
 
 const LoginCard = styled.div`
@@ -18,6 +24,12 @@ const LoginCard = styled.div`
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   width: 100%;
   max-width: 400px;
+
+  @media (max-width: 768px) {
+    padding: 2rem;
+    border-radius: 16px;
+    max-width: 100%;
+  }
 `;
 
 const LogoContainer = styled.div`
@@ -30,6 +42,10 @@ const Logo = styled.img`
   height: 60px;
   width: auto;
   object-fit: contain;
+
+  @media (max-width: 768px) {
+    height: 50px;
+  }
 `;
 
 const Title = styled.h1`
@@ -39,6 +55,11 @@ const Title = styled.h1`
   text-align: center;
   margin-bottom: 2rem;
   line-height: 1.2;
+
+  @media (max-width: 768px) {
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
 `;
 
 const Subtitle = styled.p`
@@ -46,11 +67,20 @@ const Subtitle = styled.p`
   color: #64748b;
   text-align: center;
   margin-bottom: 2.5rem;
+
+  @media (max-width: 768px) {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
 `;
 
 const FormGroup = styled.div`
   margin-bottom: 1.5rem;
   margin-top: 1rem;
+
+  @media (max-width: 768px) {
+    margin-bottom: 1.25rem;
+  }
 `;
 
 const Label = styled.label`
@@ -59,6 +89,10 @@ const Label = styled.label`
   font-weight: 500;
   color: #374151;
   margin-bottom: 0.5rem;
+
+  @media (max-width: 768px) {
+    font-size: 0.95rem;
+  }
 `;
 
 const Input = styled.input`
@@ -79,6 +113,11 @@ const Input = styled.input`
 
   &.error {
     border-color: #ef4444;
+  }
+
+  @media (max-width: 768px) {
+    padding: 0.875rem;
+    font-size: 16px; /* iOS 줌 방지 */
   }
 `;
 
@@ -107,6 +146,11 @@ const LoginButton = styled.button`
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
+  }
+
+  @media (max-width: 768px) {
+    padding: 1.125rem;
+    font-size: 1rem;
   }
 `;
 

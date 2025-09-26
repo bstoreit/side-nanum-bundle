@@ -15,6 +15,10 @@ const Header = styled.div`
   padding: 1.5rem;
   border-bottom: 1px solid #e5e7eb;
   background: white;
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
 `;
 
 const HeaderTop = styled.div`
@@ -22,12 +26,20 @@ const HeaderTop = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+
+  @media (max-width: 768px) {
+    margin-bottom: 0.75rem;
+  }
 `;
 
 const Title = styled.h2`
   font-size: 1.5rem;
   font-weight: 600;
   color: #1e293b;
+
+  @media (max-width: 768px) {
+    font-size: 1.25rem;
+  }
 `;
 
 const CloseButton = styled.button`
@@ -41,11 +53,20 @@ const CloseButton = styled.button`
   &:hover {
     background-color: #e5e7eb;
   }
+
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+    font-size: 1.4rem;
+  }
 `;
 
 const GroupInfo = styled.div`
   color: #64748b;
   font-size: 0.95rem;
+
+  @media (max-width: 768px) {
+    font-size: 0.9rem;
+  }
 `;
 
 const ActionBar = styled.div`
@@ -55,6 +76,12 @@ const ActionBar = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  @media (max-width: 768px) {
+    padding: 0.75rem 1rem;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
 `;
 
 const SearchInput = styled.input`
@@ -67,11 +94,21 @@ const SearchInput = styled.input`
   &:focus {
     border-color: #85a65c;
   }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    font-size: 16px; /* iOS 줌 방지 */
+  }
 `;
 
 const ButtonGroup = styled.div`
   display: flex;
   gap: 0.75rem;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    gap: 0.5rem;
+  }
 `;
 
 const AddButton = styled.button`
@@ -85,6 +122,12 @@ const AddButton = styled.button`
 
   &:hover {
     transform: translateY(-1px);
+  }
+
+  @media (max-width: 768px) {
+    flex: 1;
+    padding: 0.875rem 1rem;
+    font-size: 0.85rem;
   }
 `;
 
@@ -101,12 +144,23 @@ const ExcelButton = styled.button`
   &:hover {
     transform: translateY(-1px);
   }
+
+  @media (max-width: 768px) {
+    flex: 1;
+    padding: 0.875rem 1rem;
+    font-size: 0.85rem;
+    white-space: normal;
+  }
 `;
 
 const ListContainer = styled.div`
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
+
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+  }
 `;
 
 const TargetItem = styled.div`
@@ -121,6 +175,11 @@ const TargetItem = styled.div`
     border-color: #667eea;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
+
+  @media (max-width: 768px) {
+    padding: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
 `;
 
 const TargetHeader = styled.div`
@@ -128,12 +187,22 @@ const TargetHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.5rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 `;
 
 const TargetName = styled.h4`
   font-size: 1.1rem;
   font-weight: 600;
   color: #1e293b;
+
+  @media (max-width: 768px) {
+    font-size: 1rem;
+  }
 `;
 
 const TargetStatus = styled.span`
@@ -143,17 +212,31 @@ const TargetStatus = styled.span`
   font-weight: 500;
   background-color: ${props => props.status === 'active' ? '#dcfce7' : '#fef3c7'};
   color: ${props => props.status === 'active' ? '#166534' : '#92400e'};
+
+  @media (max-width: 768px) {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+  }
 `;
 
 const TargetDetails = styled.div`
   color: #64748b;
   font-size: 0.9rem;
   margin-bottom: 0.75rem;
+
+  @media (max-width: 768px) {
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+  }
 `;
 
 const TargetActions = styled.div`
   display: flex;
   gap: 0.5rem;
+
+  @media (max-width: 768px) {
+    gap: 0.375rem;
+  }
 `;
 
 const ActionButton = styled.button`
@@ -180,21 +263,39 @@ const ActionButton = styled.button`
       background-color: #dc2626;
     }
   }
+
+  @media (max-width: 768px) {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.75rem;
+    flex: 1;
+  }
 `;
 
 const EmptyState = styled.div`
   text-align: center;
   padding: 3rem;
   color: #64748b;
+
+  @media (max-width: 768px) {
+    padding: 2rem;
+  }
 `;
 
 const EmptyIcon = styled.div`
   font-size: 2.5rem;
   margin-bottom: 1rem;
+
+  @media (max-width: 768px) {
+    font-size: 2rem;
+  }
 `;
 
 const EmptyText = styled.p`
   font-size: 1rem;
+
+  @media (max-width: 768px) {
+    font-size: 0.9rem;
+  }
 `;
 
 const TargetList = ({ group, targets, onClose, onTargetUpdate }) => {

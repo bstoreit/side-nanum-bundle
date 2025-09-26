@@ -12,6 +12,13 @@ const ModalOverlay = styled.div`
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: 1rem;
+
+  @media (max-width: 768px) {
+    padding: 0.5rem;
+    align-items: flex-start;
+    padding-top: 2rem;
+  }
 `;
 
 const ModalContent = styled.div`
@@ -23,6 +30,14 @@ const ModalContent = styled.div`
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+  @media (max-width: 768px) {
+    width: 100%;
+    max-width: 100%;
+    padding: 1.5rem;
+    border-radius: 12px;
+    max-height: 85vh;
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -36,6 +51,10 @@ const ModalTitle = styled.h2`
   font-size: 1.5rem;
   font-weight: 600;
   color: #1e293b;
+
+  @media (max-width: 768px) {
+    font-size: 1.25rem;
+  }
 `;
 
 const CloseButton = styled.button`
@@ -49,12 +68,21 @@ const CloseButton = styled.button`
   &:hover {
     background-color: #e5e7eb;
   }
+
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+    font-size: 1.4rem;
+  }
 `;
 
 const Form = styled.form`
   display: flex;
   flex-direction: column;
   gap: 1rem;
+
+  @media (max-width: 768px) {
+    gap: 0.875rem;
+  }
 `;
 
 const FormGroup = styled.div`
@@ -122,6 +150,12 @@ const PhoneInputGroup = styled.div`
   gap: 0.5rem;
   align-items: center;
   width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
 `;
 
 const Select = styled.select`
@@ -144,6 +178,13 @@ const Select = styled.select`
     border-color: #ef4444;
     box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
   }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    font-size: 16px; /* iOS 줌 방지 */
+  }
 `;
 
 const PhoneInput = styled.input`
@@ -164,6 +205,11 @@ const PhoneInput = styled.input`
     border-color: #ef4444;
     box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
   }
+
+  @media (max-width: 768px) {
+    max-width: 100%;
+    font-size: 16px; /* iOS 줌 방지 */
+  }
 `;
 
 const Input = styled.input`
@@ -182,6 +228,10 @@ const Input = styled.input`
   &.error {
     border-color: #dc2626;
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+  }
+
+  @media (max-width: 768px) {
+    font-size: 16px; /* iOS 줌 방지 */
   }
 `;
 
@@ -203,6 +253,11 @@ const TextArea = styled.textarea`
   &.error {
     border-color: #dc2626;
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+  }
+
+  @media (max-width: 768px) {
+    font-size: 16px; /* iOS 줌 방지 */
+    min-height: 100px;
   }
 `;
 

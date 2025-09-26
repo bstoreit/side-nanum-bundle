@@ -232,12 +232,12 @@ def get_businesses(event):
                 print(f"조회된 사업 수: {len(businesses)}")
                 for business in businesses:
                     print(f"  - group_id: {business.get('group_id')}, group_name: {business.get('group_name')}, org_name: {business.get('org_name')}")
-                return _resp(200, {"ok": True, "data": businesses})
+                return _resp(200, {"ok": True, "data": businesses}, event)
                 
     except PermissionError as e:
-        return _resp(401, {"ok": False, "message": str(e)})
+        return _resp(401, {"ok": False, "message": str(e)}, event)
     except Exception as e:
-        return _resp(500, {"ok": False, "message": f"사업 목록 조회 중 오류가 발생했습니다: {str(e)}"})
+        return _resp(500, {"ok": False, "message": f"사업 목록 조회 중 오류가 발생했습니다: {str(e)}"}, event)
 
 # 사업 상세 조회
 def get_business(event, business_id):
