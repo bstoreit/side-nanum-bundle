@@ -81,29 +81,61 @@ def _json_default(o):
         return float(o)
     raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
 
-def _resp(status, body):
+# 허용된 Origin 목록
+ALLOWED_ORIGINS = {
+    "http://localhost:3000",
+    "https://side-nanum-bundle.netlify.app",
+}
+
+def _cors_headers(origin):
+    """CORS 헤더 생성"""
+    return {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With",
+        "Access-Control-Max-Age": "86400",
+        "Access-Control-Allow-Credentials": "true"
+    }
+
+def _get_origin(event):
+    """요청에서 Origin 헤더 추출"""
+    headers = event.get("headers") or {}
+    return headers.get("origin") or headers.get("Origin")
+
+def _resp(status, body, event=None):
+    """응답 생성 (CORS 헤더 포함)"""
+    origin = _get_origin(event) if event else None
+    allowed_origin = origin if origin in ALLOWED_ORIGINS else None
+    
+    headers = {
+        "Content-Type": "application/json; charset=utf-8"
+    }
+    
+    # 허용된 Origin이 있으면 CORS 헤더 추가
+    if allowed_origin:
+        headers.update(_cors_headers(allowed_origin))
+    
     return {
         "statusCode": status,
-        "headers": {
-            "Content-Type": "application/json; charset=utf-8",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token",
-            "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-            "Access-Control-Max-Age": "86400",
-            "Access-Control-Allow-Credentials": "false"
-        },
+        "headers": headers,
         "body": json.dumps(body, ensure_ascii=False, default=_json_default),
     }
 
 # 로그인 함수
 def login(event):
     try:
+        # 디버깅을 위한 로그 추가
+        print(f"Login request from origin: {_get_origin(event)}")
+        print(f"Request headers: {event.get('headers', {})}")
+        
         body = json.loads(event.get("body") or "{}")
         business_number = body.get("businessNumber")
         password = body.get("password")
         
+        print(f"Login attempt - Business Number: {business_number}")
+        
         if not business_number or not password:
-            return _resp(400, {"ok": False, "message": "사업자번호와 비밀번호를 입력해주세요."})
+            return _resp(400, {"ok": False, "message": "사업자번호와 비밀번호를 입력해주세요."}, event)
         
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -117,11 +149,11 @@ def login(event):
                 org = cur.fetchone()
                 
                 if not org:
-                    return _resp(401, {"ok": False, "message": "매핑된 기관정보가 없습니다."})
+                    return _resp(401, {"ok": False, "message": "매핑된 기관정보가 없습니다."}, event)
                 
                 # 비밀번호 확인 (실제로는 해시 비교해야 함)
                 if org["password_hash"] != password:  # 임시로 평문 비교
-                    return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
+                    return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."}, event)
                 
                 # JWT 토큰 발급
                 token = issue_jwt(org["org_id"])
@@ -134,10 +166,10 @@ def login(event):
                         "orgName": org["org_name"],
                         "businessNumber": business_number
                     }
-                })
+                }, event)
                 
     except Exception as e:
-        return _resp(500, {"ok": False, "message": f"로그인 처리 중 오류가 발생했습니다: {str(e)}"})
+        return _resp(500, {"ok": False, "message": f"로그인 처리 중 오류가 발생했습니다: {str(e)}"}, event)
 
 # 토큰 검증 함수
 def verify_token(event):
@@ -912,17 +944,24 @@ def handler(event, context):
     # OPTIONS 요청 처리 (CORS preflight)
     if method == "OPTIONS":
         print(f"OPTIONS 요청 처리: {path}")
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token",
-                "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-                "Access-Control-Max-Age": "86400",
-                "Content-Type": "application/json"
-            },
-            "body": ""
-        }
+        origin = _get_origin(event)
+        print(f"OPTIONS Origin: {origin}")
+        print(f"Allowed Origins: {ALLOWED_ORIGINS}")
+        allowed_origin = origin if origin in ALLOWED_ORIGINS else None
+        print(f"Allowed Origin: {allowed_origin}")
+        
+        if allowed_origin:
+            return {
+                "statusCode": 200,
+                "headers": _cors_headers(allowed_origin),
+                "body": ""
+            }
+        else:
+            return {
+                "statusCode": 403,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"ok": False, "message": "CORS not allowed"})
+            }
     
     try:
         # Health check

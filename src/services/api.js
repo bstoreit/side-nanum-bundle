@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// API 기본 설정
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '/prod';
+// API 기본 설정 - 넷리파이 호환성을 위해 하드코딩
+const API_BASE_URL = 'https://h1v071xnrh.execute-api.ap-northeast-2.amazonaws.com/prod';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -49,6 +49,10 @@ export const authAPI = {
   // 로그인
   login: async (businessNumber, password) => {
     try {
+      console.log('API Base URL:', process.env.REACT_APP_API_BASE_URL);
+      console.log('Full API URL:', api.defaults.baseURL);
+      console.log('Login request to:', `${api.defaults.baseURL}/login`);
+      
       const response = await api.post('/login', {
         businessNumber,
         password,
