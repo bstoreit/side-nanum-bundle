@@ -1,6 +1,9 @@
 import os, json, pymysql, jwt
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+from cryptography.fernet import Fernet
+import base64
+import hashlib
 
 # 1) 환경변수에서 DB 접속 정보 읽기
 REQUIRED_VARS = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]
@@ -16,6 +19,58 @@ DB_PORT = int(os.getenv("DB_PORT", "3306"))
 
 JWT_SECRET  = os.getenv("JWT_SECRET", "change-me")
 JWT_EXP_MIN = int(os.getenv("JWT_EXP_MIN", "60"))
+
+# AES 암호화/복호화 설정
+# 환경변수에서 설정하거나 기본값 사용
+# BCM_AES_KEY: AES 암호화 키 (기본값: "beautifulstore")
+# BCM_AES_SALT: Salt 값 (기본값: "default_salt")
+BCM_AES_KEY = os.getenv("BCM_AES_KEY", "beautifulstore")
+BCM_AES_SALT = os.getenv("BCM_AES_SALT", "default_salt")
+
+class AESCipher:
+    def __init__(self, key):
+        # 키를 32바이트로 맞춤
+        self.key = hashlib.sha256(key.encode()).digest()
+    
+    def decrypt(self, encrypted_data):
+        try:
+            # Base64 디코딩
+            if isinstance(encrypted_data, str):
+                encrypted_bytes = base64.b64decode(encrypted_data)
+            else:
+                encrypted_bytes = encrypted_data
+            
+            # Fernet으로 복호화
+            f = Fernet(base64.urlsafe_b64encode(self.key))
+            decrypted = f.decrypt(encrypted_bytes)
+            
+            return decrypted.decode('utf-8')
+        except Exception as e:
+            raise ValueError(f"복호화 실패: {str(e)}")
+
+def decrypt_password(encrypted_password):
+    """
+    암호화된 비밀번호를 복호화합니다.
+    encrypted_password: 암호화된 비밀번호 (str)
+    반환값: 복호화된 실제 비밀번호 (str)
+    """
+    try:
+        cipher = AESCipher(BCM_AES_KEY)
+        decrypted = cipher.decrypt(encrypted_password)
+        
+        # 복호화 문자열은 "SALT|password" 형식이어야 함
+        if '|' not in decrypted:
+            raise ValueError("복호화된 데이터 형식 오류")
+        
+        salt, password = decrypted.split('|', 1)
+        
+        # salt 검증 (선택 사항)
+        if BCM_AES_SALT and salt != BCM_AES_SALT:
+            raise ValueError("salt 불일치")
+        
+        return password
+    except Exception as exc:
+        raise ValueError(f"비밀번호 복호화 실패: {exc}")
 
 def issue_jwt(org_id: str) -> str:
     now = datetime.now(timezone.utc)
@@ -151,8 +206,13 @@ def login(event):
                 if not org:
                     return _resp(401, {"ok": False, "message": "등록되지 않은 사업자번호입니다."})
                 
-                # 비밀번호 확인 (실제로는 해시 비교해야 함)
-                if org["password_hash"] != password:  # 임시로 평문 비교
+                # 비밀번호 확인 (암호화된 비밀번호 복호화 후 비교)
+                try:
+                    decrypted_password = decrypt_password(org["password_hash"])
+                    if decrypted_password != password:
+                        return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
+                except ValueError as e:
+                    print(f"비밀번호 복호화 실패: {e}")
                     return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
                 
                 # JWT 토큰 발급
