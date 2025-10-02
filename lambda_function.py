@@ -127,15 +127,20 @@ def _resp(status, body):
 # 로그인 함수
 def login(event):
     try:
+        print(f"[LOGIN] 시작 - event: {event}")
         body = json.loads(event.get("body") or "{}")
         business_number = body.get("businessNumber")
         password = body.get("password")
         
+        print(f"[LOGIN] 입력값 - business_number: {business_number}, password: {'*' * len(password) if password else 'None'}")
+        
         if not business_number or not password:
+            print("[LOGIN] 필수 필드 누락")
             return _resp(400, {"ok": False, "message": "사업자번호와 비밀번호를 입력해주세요."})
         
         with get_conn() as conn:
             with conn.cursor() as cur:
+                print(f"[LOGIN] DB 쿼리 실행 - business_number: {business_number}")
                 # 사업자 인증 확인
                 cur.execute("""
                     SELECT org_id, org_name, password_hash 
@@ -144,30 +149,45 @@ def login(event):
                 """, (business_number,))
                 
                 org = cur.fetchone()
+                print(f"[LOGIN] DB 조회 결과: {org}")
+                
                 if not org:
+                    print("[LOGIN] 사업자번호 없음")
                     return _resp(401, {"ok": False, "message": "등록되지 않은 사업자번호입니다."})
                 
                 # 비밀번호 확인 (복호화 후 비교)
                 try:
+                    print(f"[LOGIN] 복호화 시도 - password_hash: {org['password_hash']}")
                     decrypted = cipher.decrypt(org["password_hash"])
+                    print(f"[LOGIN] 복호화 결과: {decrypted}")
+                    
                     if "|" in decrypted:
                         salt, real_pw = decrypted.split("|", 1)
+                        print(f"[LOGIN] salt: {salt}, real_pw: {real_pw}")
                         if BCM_AES_SALT and salt != BCM_AES_SALT:
+                            print(f"[LOGIN] salt 불일치 - expected: {BCM_AES_SALT}, actual: {salt}")
                             return _resp(401, {"ok": False, "message": "비밀번호 검증 실패(salt)."})
                     else:
                         real_pw = decrypted
+                        print(f"[LOGIN] salt 없음, 전체를 비밀번호로 사용: {real_pw}")
                     
+                    print(f"[LOGIN] 비밀번호 비교 - real_pw: {real_pw}, input_password: {password}")
                     if real_pw != password:
+                        print("[LOGIN] 비밀번호 불일치")
                         return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
                 except Exception as e:
                     print(f"[LOGIN] decrypt error: {e}")
                     # 복호화 실패 시 평문 비교로 폴백
+                    print(f"[LOGIN] 평문 비교로 폴백 - password_hash: {org['password_hash']}, password: {password}")
                     if org["password_hash"] != password:
+                        print("[LOGIN] 평문 비교 실패")
                         return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
                 
+                print("[LOGIN] 인증 성공, JWT 토큰 발급")
                 # JWT 토큰 발급
                 token = issue_jwt(org["org_id"])
                 
+                print(f"[LOGIN] 로그인 성공 - org_id: {org['org_id']}, org_name: {org['org_name']}")
                 return _resp(200, {
                     "ok": True,
                     "token": token,
@@ -179,6 +199,7 @@ def login(event):
                 })
                 
     except Exception as e:
+        print(f"[LOGIN] 예외 발생: {str(e)}")
         return _resp(500, {"ok": False, "message": f"로그인 처리 중 오류가 발생했습니다: {str(e)}"})
 
 # 토큰 검증 함수
