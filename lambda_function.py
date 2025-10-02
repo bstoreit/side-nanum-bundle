@@ -1,6 +1,7 @@
 import os, json, pymysql, jwt, base64, hashlib
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+from Crypto.Cipher import AES
 # 1) 환경변수에서 DB 접속 정보 읽기
 REQUIRED_VARS = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]
 missing = [k for k in REQUIRED_VARS if not os.getenv(k)]
@@ -20,19 +21,52 @@ JWT_EXP_MIN = int(os.getenv("JWT_EXP_MIN", "60"))
 BCM_AES_KEY  = os.getenv("BCM_AES_KEY", "beautifulstore")
 BCM_AES_SALT = os.getenv("BCM_AES_SALT", "basecamp")
 
-class SimpleCipher:
+class AESCipher:
     def __init__(self, key):
         self.key = hashlib.sha256(key.encode('utf-8')).digest()
+        self.bs = 32
+    
+    @staticmethod
+    def restore_specific(s: str) -> str:
+        return s.replace('@','+').replace('_','/')
+    
+    @staticmethod
+    def convert_specific(s: str) -> str:
+        return s.replace('+','@').replace('/','_')
+    
+    def _pad(self, s: bytes) -> bytes:
+        pad = self.bs - len(s) % self.bs
+        return s + bytes([pad]) * pad
+    
+    @staticmethod
+    def _unpad(s: bytes) -> bytes:
+        return s[:-s[-1]]
     
     def encrypt(self, plaintext: str) -> str:
-        # 간단한 암호화 (실제 사용 시에는 평문 반환)
-        return plaintext
+        try:
+            plain_bytes = plaintext.encode('utf-8')
+            padded = self._pad(plain_bytes)
+            cipher = AES.new(self.key, AES.MODE_ECB)
+            encrypted = cipher.encrypt(padded)
+            result = base64.b64encode(encrypted).decode('utf-8')
+            return self.convert_specific(result)
+        except Exception as e:
+            print(f"암호화 실패: {e}")
+            return plaintext
     
     def decrypt(self, enc: str) -> str:
-        # 간단한 복호화 (실제 사용 시에는 평문 반환)
-        return enc
+        try:
+            enc = self.restore_specific(enc)
+            enc_bytes = base64.b64decode(enc)
+            cipher = AES.new(self.key, AES.MODE_ECB)
+            decrypted = cipher.decrypt(enc_bytes)
+            result = self._unpad(decrypted).decode('utf-8')
+            return result
+        except Exception as e:
+            print(f"복호화 실패: {e}")
+            return enc
 
-cipher = SimpleCipher(BCM_AES_KEY)
+cipher = AESCipher(BCM_AES_KEY)
 # === End AES helpers ===
 
 
