@@ -24,6 +24,7 @@ class SimpleAESCipher:
     def __init__(self, key):
         # 키를 32바이트로 맞춤
         self.key = hashlib.sha256(key.encode('utf-8')).digest()
+        self.bs = 32  # AES 블록 크기
     
     @staticmethod
     def restore_specific(s: str) -> str:
@@ -33,16 +34,33 @@ class SimpleAESCipher:
     def convert_specific(s: str) -> str:
         return s.replace('+','@').replace('/','_')
     
+    def _pad(self, s: bytes) -> bytes:
+        """PKCS7 패딩"""
+        pad = self.bs - len(s) % self.bs
+        return s + bytes([pad]) * pad
+    
+    def _unpad(self, s: bytes) -> bytes:
+        """PKCS7 언패딩"""
+        return s[:-s[-1]]
+    
     def encrypt(self, plaintext: str) -> str:
         try:
-            # 간단한 암호화 (실제 AES 대신)
-            # 평문을 바이트로 변환하고 키와 XOR
+            # 평문을 바이트로 변환
             plain_bytes = plaintext.encode('utf-8')
-            encrypted = bytearray()
             
-            for i, byte in enumerate(plain_bytes):
-                key_byte = self.key[i % len(self.key)]
-                encrypted.append(byte ^ key_byte)
+            # PKCS7 패딩 적용
+            padded = self._pad(plain_bytes)
+            
+            # ECB 모드로 암호화 (간단한 구현)
+            encrypted = bytearray()
+            for i in range(0, len(padded), self.bs):
+                block = padded[i:i+self.bs]
+                # 키와 XOR (실제 AES는 더 복잡하지만 간단한 구현)
+                encrypted_block = bytearray()
+                for j, byte in enumerate(block):
+                    key_byte = self.key[j % len(self.key)]
+                    encrypted_block.append(byte ^ key_byte)
+                encrypted.extend(encrypted_block)
             
             # Base64 인코딩
             result = base64.b64encode(encrypted).decode('utf-8')
@@ -61,13 +79,20 @@ class SimpleAESCipher:
             
             print(f"복호화 시도 - enc_bytes 길이: {len(enc_bytes)}")
             
-            # 간단한 복호화 (XOR 역연산)
+            # ECB 모드로 복호화
             decrypted = bytearray()
-            for i, byte in enumerate(enc_bytes):
-                key_byte = self.key[i % len(self.key)]
-                decrypted.append(byte ^ key_byte)
+            for i in range(0, len(enc_bytes), self.bs):
+                block = enc_bytes[i:i+self.bs]
+                # 키와 XOR (역연산)
+                decrypted_block = bytearray()
+                for j, byte in enumerate(block):
+                    key_byte = self.key[j % len(self.key)]
+                    decrypted_block.append(byte ^ key_byte)
+                decrypted.extend(decrypted_block)
             
-            result = decrypted.decode('utf-8', errors='ignore')
+            # PKCS7 언패딩
+            unpadded = self._unpad(decrypted)
+            result = unpadded.decode('utf-8', errors='ignore')
             print(f"복호화 결과: {result}")
             return result
             
