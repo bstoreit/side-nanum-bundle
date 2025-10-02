@@ -189,44 +189,39 @@ def login(event):
                     print("[LOGIN] 사업자번호 없음")
                     return _resp(401, {"ok": False, "message": "등록되지 않은 사업자번호입니다."})
                 
-                # 비밀번호 확인 (입력 비밀번호를 암호화해서 DB와 비교)
+                # 비밀번호 확인 (DB의 password_hash를 복호화해서 비교)
                 try:
-                    print(f"[LOGIN] 입력 비밀번호 암호화 시도 - password: {password}")
+                    print(f"[LOGIN] DB password_hash 복호화 시도: {org['password_hash']}")
                     
-                    # 입력받은 비밀번호를 SALT|password 형식으로 암호화
-                    plaintext = f"{BCM_AES_SALT}|{password}"
-                    print(f"[LOGIN] 암호화할 평문: {plaintext}")
+                    # DB의 password_hash를 복호화
+                    decrypted_password = cipher.decrypt(org["password_hash"])
+                    print(f"[LOGIN] 복호화 결과: {decrypted_password}")
                     
-                    encrypted_input = cipher.encrypt(plaintext)
-                    print(f"[LOGIN] 암호화 결과: {encrypted_input}")
-                    print(f"[LOGIN] DB password_hash: {org['password_hash']}")
-                    
-                    # 암호화된 입력값과 DB의 password_hash 비교
-                    if encrypted_input != org["password_hash"]:
-                        print("[LOGIN] 암호화된 비밀번호 불일치")
+                    # 복호화된 결과에서 실제 비밀번호 추출
+                    if "|" in decrypted_password:
+                        salt, real_password = decrypted_password.split("|", 1)
+                        print(f"[LOGIN] salt: {salt}, real_password: {real_password}")
                         
-                        # 특정 사업자번호에 대해서만 DB 업데이트 허용
-                        if business_number == "1118216927" and password == "sksnatkdjq1017":
-                            print("[LOGIN] 특정 사업자번호 - DB password_hash 업데이트")
-                            try:
-                                with conn.cursor() as update_cur:
-                                    update_cur.execute("""
-                                        UPDATE nm_organizations 
-                                        SET password_hash = %s 
-                                        WHERE business_number = %s
-                                    """, (encrypted_input, business_number))
-                                    print(f"[LOGIN] DB 업데이트 완료: {encrypted_input}")
-                            except Exception as update_e:
-                                print(f"[LOGIN] DB 업데이트 실패: {update_e}")
-                                return _resp(500, {"ok": False, "message": "비밀번호 업데이트 실패"})
-                        else:
+                        # salt 검증
+                        if BCM_AES_SALT and salt != BCM_AES_SALT:
+                            print(f"[LOGIN] salt 불일치 - expected: {BCM_AES_SALT}, actual: {salt}")
+                            return _resp(401, {"ok": False, "message": "비밀번호 검증 실패(salt)."})
+                        
+                        # 실제 비밀번호와 입력 비밀번호 비교
+                        if real_password != password:
+                            print(f"[LOGIN] 비밀번호 불일치 - real: {real_password}, input: {password}")
+                            return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
+                    else:
+                        # salt 형식이 아닌 경우 전체를 비밀번호로 간주
+                        if decrypted_password != password:
+                            print(f"[LOGIN] 비밀번호 불일치 - decrypted: {decrypted_password}, input: {password}")
                             return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
                     
-                    print("[LOGIN] 암호화된 비밀번호 일치")
+                    print("[LOGIN] 비밀번호 일치")
                     
                 except Exception as e:
-                    print(f"[LOGIN] 암호화 error: {e}")
-                    # 암호화 실패 시 평문 비교로 폴백
+                    print(f"[LOGIN] 복호화 error: {e}")
+                    # 복호화 실패 시 평문 비교로 폴백
                     print(f"[LOGIN] 평문 비교로 폴백 - password_hash: {org['password_hash']}, password: {password}")
                     if org["password_hash"] != password:
                         print("[LOGIN] 평문 비교 실패")
