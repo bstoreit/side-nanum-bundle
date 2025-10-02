@@ -1,7 +1,6 @@
 import os, json, pymysql, jwt, base64, hashlib
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from Crypto.Cipher import AES
 # 1) 환경변수에서 DB 접속 정보 읽기
 REQUIRED_VARS = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]
 missing = [k for k in REQUIRED_VARS if not os.getenv(k)]
