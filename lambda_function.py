@@ -217,38 +217,50 @@ def login(event):
                 # 비밀번호 확인 (DB의 password_hash를 복호화해서 비교)
                 try:
                     print(f"[LOGIN] 환경변수 확인 - BCM_AES_KEY: {BCM_AES_KEY}, BCM_AES_SALT: {BCM_AES_SALT}")
-                    print(f"[LOGIN] DB password_hash 복호화 시도: {org['password_hash']}")
+                    print(f"[LOGIN] 사용자 입력 비밀번호: {password}")
+                    print(f"[LOGIN] DB password_hash: {org['password_hash']}")
+                    print(f"[LOGIN] DB password_hash 복호화 시도")
                     
                     # DB의 password_hash를 복호화
                     decrypted_password = cipher.decrypt(org["password_hash"])
-                    print(f"[LOGIN] 복호화 결과: {decrypted_password}")
+                    print(f"[LOGIN] 복호화 결과: '{decrypted_password}'")
+                    print(f"[LOGIN] 복호화 결과 길이: {len(decrypted_password)}")
+                    print(f"[LOGIN] 복호화 결과 바이트: {decrypted_password.encode('utf-8')}")
                     
                     # 복호화된 결과에서 실제 비밀번호 추출
                     if "|" in decrypted_password:
                         salt, real_password = decrypted_password.split("|", 1)
-                        print(f"[LOGIN] salt: {salt}, real_password: {real_password}")
+                        print(f"[LOGIN] salt: '{salt}', real_password: '{real_password}'")
+                        print(f"[LOGIN] salt 길이: {len(salt)}, real_password 길이: {len(real_password)}")
                         
                         # salt 검증
                         if BCM_AES_SALT and salt != BCM_AES_SALT:
-                            print(f"[LOGIN] salt 불일치 - expected: {BCM_AES_SALT}, actual: {salt}")
+                            print(f"[LOGIN] salt 불일치 - expected: '{BCM_AES_SALT}', actual: '{salt}'")
                             return _resp(401, {"ok": False, "message": "비밀번호 검증 실패(salt)."})
                         
                         # 실제 비밀번호와 입력 비밀번호 비교
+                        print(f"[LOGIN] 비밀번호 비교 - real: '{real_password}', input: '{password}'")
+                        print(f"[LOGIN] 비밀번호 길이 비교 - real: {len(real_password)}, input: {len(password)}")
                         if real_password != password:
-                            print(f"[LOGIN] 비밀번호 불일치 - real: {real_password}, input: {password}")
+                            print(f"[LOGIN] 비밀번호 불일치")
                             return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
                     else:
                         # salt 형식이 아닌 경우 전체를 비밀번호로 간주
+                        print(f"[LOGIN] salt 형식 아님 - 전체를 비밀번호로 간주")
+                        print(f"[LOGIN] 비밀번호 비교 - decrypted: '{decrypted_password}', input: '{password}'")
+                        print(f"[LOGIN] 비밀번호 길이 비교 - decrypted: {len(decrypted_password)}, input: {len(password)}")
                         if decrypted_password != password:
-                            print(f"[LOGIN] 비밀번호 불일치 - decrypted: {decrypted_password}, input: {password}")
+                            print(f"[LOGIN] 비밀번호 불일치")
                             return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
                     
                     print("[LOGIN] 비밀번호 일치")
                     
                 except Exception as e:
                     print(f"[LOGIN] 복호화 error: {e}")
+                    print(f"[LOGIN] 에러 타입: {type(e)}")
+                    print(f"[LOGIN] 에러 상세: {str(e)}")
                     # 복호화 실패 시 평문 비교로 폴백
-                    print(f"[LOGIN] 평문 비교로 폴백 - password_hash: {org['password_hash']}, password: {password}")
+                    print(f"[LOGIN] 평문 비교로 폴백 - password_hash: '{org['password_hash']}', password: '{password}'")
                     if org["password_hash"] != password:
                         print("[LOGIN] 평문 비교 실패")
                         return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
