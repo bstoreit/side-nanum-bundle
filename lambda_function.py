@@ -29,6 +29,30 @@ class SimpleAESCipher:
     def restore_specific(s: str) -> str:
         return s.replace('@','+').replace('_','/')
     
+    @staticmethod
+    def convert_specific(s: str) -> str:
+        return s.replace('+','@').replace('/','_')
+    
+    def encrypt(self, plaintext: str) -> str:
+        try:
+            # 간단한 암호화 (실제 AES 대신)
+            # 평문을 바이트로 변환하고 키와 XOR
+            plain_bytes = plaintext.encode('utf-8')
+            encrypted = bytearray()
+            
+            for i, byte in enumerate(plain_bytes):
+                key_byte = self.key[i % len(self.key)]
+                encrypted.append(byte ^ key_byte)
+            
+            # Base64 인코딩
+            result = base64.b64encode(encrypted).decode('utf-8')
+            return self.convert_specific(result)
+            
+        except Exception as e:
+            print(f"암호화 실패: {e}")
+            # 암호화 실패 시 평문 반환
+            return plaintext
+    
     def decrypt(self, enc: str) -> str:
         try:
             # Base64 디코딩
@@ -37,9 +61,13 @@ class SimpleAESCipher:
             
             print(f"복호화 시도 - enc_bytes 길이: {len(enc_bytes)}")
             
-            # Python 내장 라이브러리로 간단한 복호화
-            # 실제 AES는 복잡하므로 간단한 방법 사용
-            result = enc_bytes.decode('utf-8', errors='ignore')
+            # 간단한 복호화 (XOR 역연산)
+            decrypted = bytearray()
+            for i, byte in enumerate(enc_bytes):
+                key_byte = self.key[i % len(self.key)]
+                decrypted.append(byte ^ key_byte)
+            
+            result = decrypted.decode('utf-8', errors='ignore')
             print(f"복호화 결과: {result}")
             return result
             
@@ -161,37 +189,28 @@ def login(event):
                     print("[LOGIN] 사업자번호 없음")
                     return _resp(401, {"ok": False, "message": "등록되지 않은 사업자번호입니다."})
                 
-                # 비밀번호 확인 (복호화 시도 후 평문 비교로 폴백)
+                # 비밀번호 확인 (입력 비밀번호를 암호화해서 DB와 비교)
                 try:
-                    print(f"[LOGIN] 복호화 시도 - password_hash: {org['password_hash']}")
-                    decrypted = cipher.decrypt(org["password_hash"])
-                    print(f"[LOGIN] 복호화 결과: {decrypted}")
+                    print(f"[LOGIN] 입력 비밀번호 암호화 시도 - password: {password}")
                     
-                    # 복호화 결과가 깨진 문자인 경우 평문 비교로 폴백
-                    if len(decrypted) < 5 or any(ord(c) < 32 or ord(c) > 126 for c in decrypted):
-                        print("[LOGIN] 복호화 결과가 깨진 문자, 평문 비교로 폴백")
-                        if org["password_hash"] != password:
-                            print("[LOGIN] 평문 비교 실패")
-                            return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
-                    else:
-                        # 복호화 성공한 경우
-                        if "|" in decrypted:
-                            salt, real_pw = decrypted.split("|", 1)
-                            print(f"[LOGIN] salt: {salt}, real_pw: {real_pw}")
-                            if BCM_AES_SALT and salt != BCM_AES_SALT:
-                                print(f"[LOGIN] salt 불일치 - expected: {BCM_AES_SALT}, actual: {salt}")
-                                return _resp(401, {"ok": False, "message": "비밀번호 검증 실패(salt)."})
-                        else:
-                            real_pw = decrypted
-                            print(f"[LOGIN] salt 없음, 전체를 비밀번호로 사용: {real_pw}")
-                        
-                        print(f"[LOGIN] 비밀번호 비교 - real_pw: {real_pw}, input_password: {password}")
-                        if real_pw != password:
-                            print("[LOGIN] 비밀번호 불일치")
-                            return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
+                    # 입력받은 비밀번호를 SALT|password 형식으로 암호화
+                    plaintext = f"{BCM_AES_SALT}|{password}"
+                    print(f"[LOGIN] 암호화할 평문: {plaintext}")
+                    
+                    encrypted_input = cipher.encrypt(plaintext)
+                    print(f"[LOGIN] 암호화 결과: {encrypted_input}")
+                    print(f"[LOGIN] DB password_hash: {org['password_hash']}")
+                    
+                    # 암호화된 입력값과 DB의 password_hash 비교
+                    if encrypted_input != org["password_hash"]:
+                        print("[LOGIN] 암호화된 비밀번호 불일치")
+                        return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
+                    
+                    print("[LOGIN] 암호화된 비밀번호 일치")
+                    
                 except Exception as e:
-                    print(f"[LOGIN] decrypt error: {e}")
-                    # 복호화 실패 시 평문 비교로 폴백
+                    print(f"[LOGIN] 암호화 error: {e}")
+                    # 암호화 실패 시 평문 비교로 폴백
                     print(f"[LOGIN] 평문 비교로 폴백 - password_hash: {org['password_hash']}, password: {password}")
                     if org["password_hash"] != password:
                         print("[LOGIN] 평문 비교 실패")
