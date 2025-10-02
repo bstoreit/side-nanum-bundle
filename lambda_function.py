@@ -1,6 +1,7 @@
 import os, json, pymysql, jwt, base64, hashlib
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+from Crypto.Cipher import AES
 # 1) 환경변수에서 DB 접속 정보 읽기
 REQUIRED_VARS = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]
 missing = [k for k in REQUIRED_VARS if not os.getenv(k)]
@@ -20,11 +21,10 @@ JWT_EXP_MIN = int(os.getenv("JWT_EXP_MIN", "60"))
 BCM_AES_KEY  = os.getenv("BCM_AES_KEY", "beautifulstore")
 BCM_AES_SALT = os.getenv("BCM_AES_SALT", "basecamp")
 
-class SimpleAESCipher:
+class AESCipher:
     def __init__(self, key):
-        # 키를 32바이트로 맞춤
         self.key = hashlib.sha256(key.encode('utf-8')).digest()
-        self.bs = 32  # AES 블록 크기
+        self.bs = 32
     
     @staticmethod
     def restore_specific(s: str) -> str:
@@ -35,73 +35,38 @@ class SimpleAESCipher:
         return s.replace('+','@').replace('/','_')
     
     def _pad(self, s: bytes) -> bytes:
-        """PKCS7 패딩"""
         pad = self.bs - len(s) % self.bs
         return s + bytes([pad]) * pad
     
-    def _unpad(self, s: bytes) -> bytes:
-        """PKCS7 언패딩"""
+    @staticmethod
+    def _unpad(s: bytes) -> bytes:
         return s[:-s[-1]]
     
     def encrypt(self, plaintext: str) -> str:
         try:
-            # 평문을 바이트로 변환
             plain_bytes = plaintext.encode('utf-8')
-            
-            # PKCS7 패딩 적용
             padded = self._pad(plain_bytes)
-            
-            # ECB 모드로 암호화 (간단한 구현)
-            encrypted = bytearray()
-            for i in range(0, len(padded), self.bs):
-                block = padded[i:i+self.bs]
-                # 키와 XOR (실제 AES는 더 복잡하지만 간단한 구현)
-                encrypted_block = bytearray()
-                for j, byte in enumerate(block):
-                    key_byte = self.key[j % len(self.key)]
-                    encrypted_block.append(byte ^ key_byte)
-                encrypted.extend(encrypted_block)
-            
-            # Base64 인코딩
+            cipher = AES.new(self.key, AES.MODE_ECB)
+            encrypted = cipher.encrypt(padded)
             result = base64.b64encode(encrypted).decode('utf-8')
             return self.convert_specific(result)
-            
         except Exception as e:
             print(f"암호화 실패: {e}")
-            # 암호화 실패 시 평문 반환
             return plaintext
     
     def decrypt(self, enc: str) -> str:
         try:
-            # Base64 디코딩
             enc = self.restore_specific(enc)
             enc_bytes = base64.b64decode(enc)
-            
-            print(f"복호화 시도 - enc_bytes 길이: {len(enc_bytes)}")
-            
-            # ECB 모드로 복호화
-            decrypted = bytearray()
-            for i in range(0, len(enc_bytes), self.bs):
-                block = enc_bytes[i:i+self.bs]
-                # 키와 XOR (역연산)
-                decrypted_block = bytearray()
-                for j, byte in enumerate(block):
-                    key_byte = self.key[j % len(self.key)]
-                    decrypted_block.append(byte ^ key_byte)
-                decrypted.extend(decrypted_block)
-            
-            # PKCS7 언패딩
-            unpadded = self._unpad(decrypted)
-            result = unpadded.decode('utf-8', errors='ignore')
-            print(f"복호화 결과: {result}")
+            cipher = AES.new(self.key, AES.MODE_ECB)
+            decrypted = cipher.decrypt(enc_bytes)
+            result = self._unpad(decrypted).decode('utf-8')
             return result
-            
         except Exception as e:
             print(f"복호화 실패: {e}")
-            # 복호화 실패 시 평문으로 처리
             return enc
 
-cipher = SimpleAESCipher(BCM_AES_KEY)
+cipher = AESCipher(BCM_AES_KEY)
 # === End AES helpers ===
 
 
