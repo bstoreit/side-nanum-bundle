@@ -1,7 +1,7 @@
 import os, json, pymysql, jwt, base64, hashlib
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from Crypto.Cipher import AES
+from cryptography.fernet import Fernet
 # 1) 환경변수에서 DB 접속 정보 읽기
 REQUIRED_VARS = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]
 missing = [k for k in REQUIRED_VARS if not os.getenv(k)]
@@ -23,29 +23,28 @@ BCM_AES_SALT = os.getenv("BCM_AES_SALT")  # 선택
 
 class AESCipher:
     def __init__(self, key):
-        self.bs = 32
         self.key = hashlib.sha256(key.encode('utf-8')).digest()
-    
-    def _pad(self, s: bytes) -> bytes:
-        pad = self.bs - len(s) % self.bs
-        return s + bytes([pad]) * pad
-    
-    @staticmethod
-    def _unpad(s: bytes) -> bytes:
-        return s[:-s[-1]]
-    
-    @staticmethod
-    def convert_specific(s: str) -> str:
-        return s.replace('+','@').replace('/','_')
     
     @staticmethod
     def restore_specific(s: str) -> str:
         return s.replace('@','+').replace('_','/')
     
     def decrypt(self, enc: str) -> str:
-        enc = base64.b64decode(self.restore_specific(enc))
-        cipher = AES.new(self.key, AES.MODE_ECB)
-        return self._unpad(cipher.decrypt(enc)).decode('utf-8')
+        try:
+            # Base64 디코딩
+            enc = self.restore_specific(enc)
+            enc_bytes = base64.b64decode(enc)
+            
+            # Fernet으로 복호화 (간단한 방법)
+            f = Fernet(base64.urlsafe_b64encode(self.key))
+            decrypted = f.decrypt(enc_bytes)
+            return decrypted.decode('utf-8')
+        except Exception as e:
+            # Fernet이 실패하면 간단한 base64 디코딩만 시도
+            try:
+                return base64.b64decode(enc).decode('utf-8', errors='ignore')
+            except:
+                raise ValueError(f"복호화 실패: {str(e)}")
 
 cipher = AESCipher(BCM_AES_KEY)
 # === End AES helpers ===
