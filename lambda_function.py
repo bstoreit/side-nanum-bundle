@@ -191,6 +191,7 @@ def login(event):
                 
                 # 비밀번호 확인 (입력 비밀번호를 암호화해서 DB와 비교)
                 try:
+                    print(f"[LOGIN] 환경변수 확인 - BCM_AES_KEY: {BCM_AES_KEY}, BCM_AES_SALT: {BCM_AES_SALT}")
                     print(f"[LOGIN] 입력 비밀번호 암호화 시도 - password: {password}")
                     
                     # 입력받은 비밀번호를 SALT|password 형식으로 암호화
