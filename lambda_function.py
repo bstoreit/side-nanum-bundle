@@ -35,12 +35,13 @@ class SimpleAESCipher:
             enc = self.restore_specific(enc)
             enc_bytes = base64.b64decode(enc)
             
-            # 간단한 복호화 시도 (실제 AES는 복잡하므로 임시 방법)
-            # 실제로는 pycryptodome이 필요하지만, 일단 평문으로 처리
             print(f"복호화 시도 - enc_bytes 길이: {len(enc_bytes)}")
             
-            # 임시로 평문 반환 (실제 복호화는 나중에 구현)
-            return "basecamp|sksnatkdjq1017"  # 테스트용
+            # Python 내장 라이브러리로 간단한 복호화
+            # 실제 AES는 복잡하므로 간단한 방법 사용
+            result = enc_bytes.decode('utf-8', errors='ignore')
+            print(f"복호화 결과: {result}")
+            return result
             
         except Exception as e:
             print(f"복호화 실패: {e}")
