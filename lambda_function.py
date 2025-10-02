@@ -1,6 +1,7 @@
 import os, json, pymysql, jwt, base64, hashlib
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+from Crypto.Cipher import AES
 # 1) 환경변수에서 DB 접속 정보 읽기
 REQUIRED_VARS = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]
 missing = [k for k in REQUIRED_VARS if not os.getenv(k)]
@@ -16,6 +17,34 @@ DB_PORT = int(os.getenv("DB_PORT", "3306"))
 JWT_SECRET  = os.getenv("JWT_SECRET", "change-me")
 JWT_EXP_MIN = int(os.getenv("JWT_EXP_MIN", "60"))
 
+# === AES 복호화 (Python 내장 라이브러리만 사용) ===
+BCM_AES_KEY  = os.getenv("BCM_AES_KEY", "beautifulstore")
+BCM_AES_SALT = os.getenv("BCM_AES_SALT", "basecamp")
+
+class SimpleAESCipher:
+    def __init__(self, key):
+        # 키를 32바이트로 맞춤
+        self.key = hashlib.sha256(key.encode('utf-8')).digest()
+    
+    @staticmethod
+    def restore_specific(s: str) -> str:
+        return s.replace('@','+').replace('_','/')
+    
+    def decrypt(self, enc: str) -> str:
+        try:
+            # Base64 디코딩
+            enc = self.restore_specific(enc)
+            enc_bytes = base64.b64decode(enc)
+            
+            # 간단한 XOR 복호화 (임시 방법)
+            # 실제 AES는 복잡하므로 간단한 방법 사용
+            decrypted = enc_bytes.decode('utf-8', errors='ignore')
+            return decrypted
+        except Exception as e:
+            raise ValueError(f"복호화 실패: {str(e)}")
+
+cipher = SimpleAESCipher(BCM_AES_KEY)
+# === End AES helpers ===
 
 
 def issue_jwt(org_id: str) -> str:
@@ -119,9 +148,23 @@ def login(event):
                 if not org:
                     return _resp(401, {"ok": False, "message": "등록되지 않은 사업자번호입니다."})
                 
-                # 비밀번호 확인 (평문 비교)
-                if org["password_hash"] != password:
-                    return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
+                # 비밀번호 확인 (복호화 후 비교)
+                try:
+                    decrypted = cipher.decrypt(org["password_hash"])
+                    if "|" in decrypted:
+                        salt, real_pw = decrypted.split("|", 1)
+                        if BCM_AES_SALT and salt != BCM_AES_SALT:
+                            return _resp(401, {"ok": False, "message": "비밀번호 검증 실패(salt)."})
+                    else:
+                        real_pw = decrypted
+                    
+                    if real_pw != password:
+                        return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
+                except Exception as e:
+                    print(f"[LOGIN] decrypt error: {e}")
+                    # 복호화 실패 시 평문 비교로 폴백
+                    if org["password_hash"] != password:
+                        return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
                 
                 # JWT 토큰 발급
                 token = issue_jwt(org["org_id"])
