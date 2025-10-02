@@ -1,7 +1,6 @@
 import os, json, pymysql, jwt, base64, hashlib
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from cryptography.fernet import Fernet
 # 1) 환경변수에서 DB 접속 정보 읽기
 REQUIRED_VARS = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]
 missing = [k for k in REQUIRED_VARS if not os.getenv(k)]
@@ -17,37 +16,6 @@ DB_PORT = int(os.getenv("DB_PORT", "3306"))
 JWT_SECRET  = os.getenv("JWT_SECRET", "change-me")
 JWT_EXP_MIN = int(os.getenv("JWT_EXP_MIN", "60"))
 
-# === AES ECB Decryption for legacy password storage ===
-BCM_AES_KEY  = os.getenv("BCM_AES_KEY", "beautifulstore")
-BCM_AES_SALT = os.getenv("BCM_AES_SALT")  # 선택
-
-class AESCipher:
-    def __init__(self, key):
-        self.key = hashlib.sha256(key.encode('utf-8')).digest()
-    
-    @staticmethod
-    def restore_specific(s: str) -> str:
-        return s.replace('@','+').replace('_','/')
-    
-    def decrypt(self, enc: str) -> str:
-        try:
-            # Base64 디코딩
-            enc = self.restore_specific(enc)
-            enc_bytes = base64.b64decode(enc)
-            
-            # Fernet으로 복호화 (간단한 방법)
-            f = Fernet(base64.urlsafe_b64encode(self.key))
-            decrypted = f.decrypt(enc_bytes)
-            return decrypted.decode('utf-8')
-        except Exception as e:
-            # Fernet이 실패하면 간단한 base64 디코딩만 시도
-            try:
-                return base64.b64decode(enc).decode('utf-8', errors='ignore')
-            except:
-                raise ValueError(f"복호화 실패: {str(e)}")
-
-cipher = AESCipher(BCM_AES_KEY)
-# === End AES helpers ===
 
 
 def issue_jwt(org_id: str) -> str:
@@ -133,47 +101,42 @@ def login(event):
     try:
         body = json.loads(event.get("body") or "{}")
         business_number = body.get("businessNumber")
-        password_input  = body.get("password")
-
-        if not business_number or not password_input:
+        password = body.get("password")
+        
+        if not business_number or not password:
             return _resp(400, {"ok": False, "message": "사업자번호와 비밀번호를 입력해주세요."})
-
+        
         with get_conn() as conn:
             with conn.cursor() as cur:
+                # 사업자 인증 확인
                 cur.execute("""
-                    SELECT org_id, org_name, password_hash
-                    FROM nm_organizations
+                    SELECT org_id, org_name, password_hash 
+                    FROM nm_organizations 
                     WHERE business_number = %s
                 """, (business_number,))
+                
                 org = cur.fetchone()
                 if not org:
                     return _resp(401, {"ok": False, "message": "등록되지 않은 사업자번호입니다."})
-
-                # ★ 암호 복호화 후 비교
-                try:
-                    decrypted = cipher.decrypt(org["password_hash"])   # 예: "basecamp|나눔사업1017"
-                    if "|" in decrypted:
-                        salt, real_pw = decrypted.split("|", 1)
-                        if BCM_AES_SALT and salt != BCM_AES_SALT:
-                            return _resp(401, {"ok": False, "message": "비밀번호 검증 실패(salt)."})
-                    else:
-                        # 혹시 "SALT|password" 포맷이 아닌 데이터면 전체를 비번으로 간주
-                        real_pw = decrypted
-
-                except Exception as e:
-                    print(f"[LOGIN] decrypt error: {e}")
-                    return _resp(401, {"ok": False, "message": "비밀번호 검증 실패."})
-
-                if real_pw != password_input:
+                
+                # 비밀번호 확인 (평문 비교)
+                if org["password_hash"] != password:
                     return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
-
+                
+                # JWT 토큰 발급
                 token = issue_jwt(org["org_id"])
-                return _resp(200, {"ok": True, "token": token, "user": {
-                    "orgId": org["org_id"], "orgName": org["org_name"], "businessNumber": business_number
-                }})
-
+                
+                return _resp(200, {
+                    "ok": True,
+                    "token": token,
+                    "user": {
+                        "orgId": org["org_id"],
+                        "orgName": org["org_name"],
+                        "businessNumber": business_number
+                    }
+                })
+                
     except Exception as e:
-        print(f"[LOGIN] unexpected error: {e}")
         return _resp(500, {"ok": False, "message": f"로그인 처리 중 오류가 발생했습니다: {str(e)}"})
 
 # 토큰 검증 함수
