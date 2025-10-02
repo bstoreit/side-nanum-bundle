@@ -161,26 +161,34 @@ def login(event):
                     print("[LOGIN] 사업자번호 없음")
                     return _resp(401, {"ok": False, "message": "등록되지 않은 사업자번호입니다."})
                 
-                # 비밀번호 확인 (복호화 후 비교)
+                # 비밀번호 확인 (복호화 시도 후 평문 비교로 폴백)
                 try:
                     print(f"[LOGIN] 복호화 시도 - password_hash: {org['password_hash']}")
                     decrypted = cipher.decrypt(org["password_hash"])
                     print(f"[LOGIN] 복호화 결과: {decrypted}")
                     
-                    if "|" in decrypted:
-                        salt, real_pw = decrypted.split("|", 1)
-                        print(f"[LOGIN] salt: {salt}, real_pw: {real_pw}")
-                        if BCM_AES_SALT and salt != BCM_AES_SALT:
-                            print(f"[LOGIN] salt 불일치 - expected: {BCM_AES_SALT}, actual: {salt}")
-                            return _resp(401, {"ok": False, "message": "비밀번호 검증 실패(salt)."})
+                    # 복호화 결과가 깨진 문자인 경우 평문 비교로 폴백
+                    if len(decrypted) < 5 or any(ord(c) < 32 or ord(c) > 126 for c in decrypted):
+                        print("[LOGIN] 복호화 결과가 깨진 문자, 평문 비교로 폴백")
+                        if org["password_hash"] != password:
+                            print("[LOGIN] 평문 비교 실패")
+                            return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
                     else:
-                        real_pw = decrypted
-                        print(f"[LOGIN] salt 없음, 전체를 비밀번호로 사용: {real_pw}")
-                    
-                    print(f"[LOGIN] 비밀번호 비교 - real_pw: {real_pw}, input_password: {password}")
-                    if real_pw != password:
-                        print("[LOGIN] 비밀번호 불일치")
-                        return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
+                        # 복호화 성공한 경우
+                        if "|" in decrypted:
+                            salt, real_pw = decrypted.split("|", 1)
+                            print(f"[LOGIN] salt: {salt}, real_pw: {real_pw}")
+                            if BCM_AES_SALT and salt != BCM_AES_SALT:
+                                print(f"[LOGIN] salt 불일치 - expected: {BCM_AES_SALT}, actual: {salt}")
+                                return _resp(401, {"ok": False, "message": "비밀번호 검증 실패(salt)."})
+                        else:
+                            real_pw = decrypted
+                            print(f"[LOGIN] salt 없음, 전체를 비밀번호로 사용: {real_pw}")
+                        
+                        print(f"[LOGIN] 비밀번호 비교 - real_pw: {real_pw}, input_password: {password}")
+                        if real_pw != password:
+                            print("[LOGIN] 비밀번호 불일치")
+                            return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
                 except Exception as e:
                     print(f"[LOGIN] decrypt error: {e}")
                     # 복호화 실패 시 평문 비교로 폴백
