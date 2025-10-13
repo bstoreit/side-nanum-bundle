@@ -304,12 +304,19 @@ const Dashboard = ({ user, onLogout }) => {
     <DashboardContainer>
       <Header>
         <LogoContainer>
-          <Logo>아름다운가게</Logo>
+          <LogoImage 
+            src="https://www.beautifulstore.org/wp-content/uploads/2025/06/%EC%95%84%EB%A6%84%EB%8B%A4%EC%9A%B4%EA%B0%80%EA%B2%8C_CI.png" 
+            alt="아름다운가게 로고"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'block';
+            }}
+          />
+          <Logo style={{ display: 'none' }}>아름다운가게</Logo>
           <Separator />
           <Logo>나눔보따리 지원대상자 등록/엑셀받기</Logo>
         </LogoContainer>
         <UserInfo>
-          <BusinessName>{user.businessName}</BusinessName>
           <LogoutButton onClick={onLogout}>
             로그아웃
           </LogoutButton>
