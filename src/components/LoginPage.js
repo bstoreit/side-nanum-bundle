@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { authAPI } from '../services/api';
 
@@ -193,6 +193,14 @@ const LoginPage = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const businessNumberRef = useRef(null);
+
+  // 컴포넌트 마운트 시 사업자번호 필드에 자동 포커스
+  useEffect(() => {
+    if (businessNumberRef.current) {
+      businessNumberRef.current.focus();
+    }
+  }, []);
 
   const validateField = (name, value) => {
     let errorMessage = '';
@@ -291,9 +299,10 @@ const LoginPage = ({ onLogin }) => {
           <FormGroup>
             <Label htmlFor="businessNumber">사업자번호</Label>
             <Input
+              ref={businessNumberRef}
               id="businessNumber"
               type="text"
-              placeholder="사업자번호를 입력하세요"
+              placeholder="사업자번호를 - 없이 입력하세요"
               value={businessNumber}
               onChange={(e) => handleInputChange('businessNumber', e.target.value)}
               className={fieldErrors.businessNumber ? 'error' : ''}
