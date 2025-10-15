@@ -719,6 +719,11 @@ const GroupModal = ({ group, onSave, onClose }) => {
     try {
       // 주소 정보를 합쳐서 저장
       const fullAddress = `${formData.zipcode} ${formData.address}`.trim();
+      // 일반전화가 비어있는지 확인
+      const phoneMiddle = formData.phoneMiddle.trim();
+      const phoneLast = formData.phoneLast.trim();
+      const phone = (phoneMiddle && phoneLast) ? `${formData.phoneArea}${phoneMiddle}${phoneLast}` : '';
+
       const submitData = {
         name: formData.name,
         organizationName: formData.organizationName,
@@ -727,7 +732,7 @@ const GroupModal = ({ group, onSave, onClose }) => {
         address: fullAddress,
         detailAddress: formData.detailAddress,
         mobilePhone: `${formData.mobilePhoneArea}${formData.mobilePhoneMiddle}${formData.mobilePhoneLast}`,
-        phone: `${formData.phoneArea}${formData.phoneMiddle}${formData.phoneLast}`,
+        phone: phone,
         description: formData.description
       };
 

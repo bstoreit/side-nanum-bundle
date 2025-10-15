@@ -1,7 +1,15 @@
-import os, json, pymysql, jwt, base64, hashlib
+import os, json, pymysql, jwt
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+
+# ----------------------------------------
+# [암호화모듈 사용을 위한 추가 시작]
+import base64
+import hashlib
 from Crypto.Cipher import AES
+# [암호화모듈 사용을 위한 추가 종료]
+# ----------------------------------------
+
 # 1) 환경변수에서 DB 접속 정보 읽기
 REQUIRED_VARS = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]
 missing = [k for k in REQUIRED_VARS if not os.getenv(k)]
@@ -17,57 +25,62 @@ DB_PORT = int(os.getenv("DB_PORT", "3306"))
 JWT_SECRET  = os.getenv("JWT_SECRET", "change-me")
 JWT_EXP_MIN = int(os.getenv("JWT_EXP_MIN", "60"))
 
-# === AES 복호화 (Python 내장 라이브러리만 사용) ===
-BCM_AES_KEY  = os.getenv("BCM_AES_KEY", "beautifulstore")
-BCM_AES_SALT = os.getenv("BCM_AES_SALT", "basecamp")
+# 암호화에 사용할 Key와 Salt는 환경변수에서 가져옵니다.
+# [암호화모듈 사용을 위한 추가 시작]
+BCM_AES_KEY = os.getenv("BCM_AES_KEY")
+BCM_AES_SALT = os.getenv("BCM_AES_SALT")
+# [암호화모듈 사용을 위한 추가 종료]
 
-class AESCipher:
+class AESCipher():
+
     def __init__(self, key):
-        self.key = hashlib.sha256(key.encode('utf-8')).digest()
         self.bs = 32
-    
-    @staticmethod
-    def restore_specific(s: str) -> str:
-        return s.replace('@','+').replace('_','/')
-    
-    @staticmethod
-    def convert_specific(s: str) -> str:
-        return s.replace('+','@').replace('/','_')
-    
-    def _pad(self, s: bytes) -> bytes:
-        pad = self.bs - len(s) % self.bs
-        return s + bytes([pad]) * pad
-    
-    @staticmethod
-    def _unpad(s: bytes) -> bytes:
-        return s[:-s[-1]]
-    
-    def encrypt(self, plaintext: str) -> str:
-        try:
-            plain_bytes = plaintext.encode('utf-8')
-            padded = self._pad(plain_bytes)
-            cipher = AES.new(self.key, AES.MODE_ECB)
-            encrypted = cipher.encrypt(padded)
-            result = base64.b64encode(encrypted).decode('utf-8')
-            return self.convert_specific(result)
-        except Exception as e:
-            print(f"암호화 실패: {e}")
-            return plaintext
-    
-    def decrypt(self, enc: str) -> str:
-        try:
-            enc = self.restore_specific(enc)
-            enc_bytes = base64.b64decode(enc)
-            cipher = AES.new(self.key, AES.MODE_ECB)
-            decrypted = cipher.decrypt(enc_bytes)
-            result = self._unpad(decrypted).decode('utf-8')
-            return result
-        except Exception as e:
-            print(f"복호화 실패: {e}")
-            return enc
+        self.key = hashlib.sha256(AESCipher.str_to_bytes(key)).digest()
 
-cipher = AESCipher(BCM_AES_KEY)
-# === End AES helpers ===
+
+    def _pad(self, s):
+        return s + (self.bs - len(s) % self.bs) * AESCipher.str_to_bytes(chr(self.bs - len(s) % self.bs))
+
+
+    @staticmethod
+    def _unpad(s):
+        return s[:-ord(s[len(s)-1:])]
+
+
+    @staticmethod
+    def str_to_bytes(data):
+        u_type = type(b''.decode('utf8'))
+        if isinstance(data, u_type):
+            return data.encode('utf8')
+        return data
+
+
+    def encrypt(self, raw):
+        raw = self._pad(AESCipher.str_to_bytes(raw))
+        cipher = AES.new(self.key, AES.MODE_ECB)
+        enc = base64.b64encode(cipher.encrypt(raw)).decode('utf-8')
+        enc = self.convert_specific(enc)
+        return enc
+
+
+    def decrypt(self, enc):
+        enc = self.restore_specific(enc)
+        enc = base64.b64decode(enc)
+        cipher = AES.new(self.key, AES.MODE_ECB)
+        dec = self._unpad(cipher.decrypt(enc)).decode('utf-8')
+        return dec
+
+
+    def convert_specific(self, data):
+        data = data.replace('+','@')
+        data = data.replace('/','_')
+        return data
+
+
+    def restore_specific(self, data):
+        data = data.replace('@','+')
+        data = data.replace('_','/')
+        return data
 
 
 def issue_jwt(org_id: str) -> str:
@@ -151,20 +164,18 @@ def _resp(status, body):
 # 로그인 함수
 def login(event):
     try:
-        print(f"[LOGIN] 시작 - event: {event}")
         body = json.loads(event.get("body") or "{}")
         business_number = body.get("businessNumber")
         password = body.get("password")
-        
-        print(f"[LOGIN] 입력값 - business_number: {business_number}, password: {'*' * len(password) if password else 'None'}")
-        
+        print(f"business_number: {business_number}")
+        print(f"password: {password}")
+
+
         if not business_number or not password:
-            print("[LOGIN] 필수 필드 누락")
             return _resp(400, {"ok": False, "message": "사업자번호와 비밀번호를 입력해주세요."})
         
         with get_conn() as conn:
             with conn.cursor() as cur:
-                print(f"[LOGIN] DB 쿼리 실행 - business_number: {business_number}")
                 # 사업자 인증 확인
                 cur.execute("""
                     SELECT org_id, org_name, password_hash 
@@ -173,68 +184,33 @@ def login(event):
                 """, (business_number,))
                 
                 org = cur.fetchone()
-                print(f"[LOGIN] DB 조회 결과: {org}")
-                
                 if not org:
-                    print("[LOGIN] 사업자번호 없음")
                     return _resp(401, {"ok": False, "message": "등록되지 않은 사업자번호입니다."})
                 
-                # 비밀번호 확인 (DB의 password_hash를 복호화해서 비교)
+                # 수석님이 이곳에 암호화 로직을 추가해 주세요.
+                # 암호화 과정 추가 시작.
+                # --- [수정된 암호화 로직] ---
                 try:
-                    print(f"[LOGIN] 환경변수 확인 - BCM_AES_KEY: {BCM_AES_KEY}, BCM_AES_SALT: {BCM_AES_SALT}")
-                    print(f"[LOGIN] 사용자 입력 비밀번호: {password}")
-                    print(f"[LOGIN] DB password_hash: {org['password_hash']}")
-                    print(f"[LOGIN] DB password_hash 복호화 시도")
+                    # 1. AES Cipher 객체 생성 (BCM_AES_KEY 사용)
+                    # BCM_AES_KEY와 BCM_AES_SALT는 환경 변수로 정의되어 있어야 합니다.
+                    cipher = AESCipher(BCM_AES_KEY)
                     
-                    # DB의 password_hash를 복호화
-                    decrypted_password = cipher.decrypt(org["password_hash"])
-                    print(f"[LOGIN] 복호화 결과: '{decrypted_password}'")
-                    print(f"[LOGIN] 복호화 결과 길이: {len(decrypted_password)}")
-                    print(f"[LOGIN] 복호화 결과 바이트: {decrypted_password.encode('utf-8')}")
-                    
-                    # 복호화된 결과에서 실제 비밀번호 추출
-                    if "|" in decrypted_password:
-                        salt, real_password = decrypted_password.split("|", 1)
-                        print(f"[LOGIN] salt: '{salt}', real_password: '{real_password}'")
-                        print(f"[LOGIN] salt 길이: {len(salt)}, real_password 길이: {len(real_password)}")
-                        
-                        # salt 검증
-                        if BCM_AES_SALT and salt != BCM_AES_SALT:
-                            print(f"[LOGIN] salt 불일치 - expected: '{BCM_AES_SALT}', actual: '{salt}'")
-                            return _resp(401, {"ok": False, "message": "비밀번호 검증 실패(salt)."})
-                        
-                        # 실제 비밀번호와 입력 비밀번호 비교
-                        print(f"[LOGIN] 비밀번호 비교 - real: '{real_password}', input: '{password}'")
-                        print(f"[LOGIN] 비밀번호 길이 비교 - real: {len(real_password)}, input: {len(password)}")
-                        if real_password != password:
-                            print(f"[LOGIN] 비밀번호 불일치")
-                            return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
-                    else:
-                        # salt 형식이 아닌 경우 전체를 비밀번호로 간주
-                        print(f"[LOGIN] salt 형식 아님 - 전체를 비밀번호로 간주")
-                        print(f"[LOGIN] 비밀번호 비교 - decrypted: '{decrypted_password}', input: '{password}'")
-                        print(f"[LOGIN] 비밀번호 길이 비교 - decrypted: {len(decrypted_password)}, input: {len(password)}")
-                        if decrypted_password != password:
-                            print(f"[LOGIN] 비밀번호 불일치")
-                            return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
-                    
-                    print("[LOGIN] 비밀번호 일치")
+                    # 2. 사용자가 입력한 비밀번호 + SALT 암호화
+                    # 암호화된 비밀번호는 DB에 저장된 형식과 일치해야 합니다.
+                    encrypted_input_password = cipher.encrypt(f'{BCM_AES_SALT}|{password}') 
                     
                 except Exception as e:
-                    print(f"[LOGIN] 복호화 error: {e}")
-                    print(f"[LOGIN] 에러 타입: {type(e)}")
-                    print(f"[LOGIN] 에러 상세: {str(e)}")
-                    # 복호화 실패 시 평문 비교로 폴백
-                    print(f"[LOGIN] 평문 비교로 폴백 - password_hash: '{org['password_hash']}', password: '{password}'")
-                    if org["password_hash"] != password:
-                        print("[LOGIN] 평문 비교 실패")
-                        return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
+                    print(f"암호화 처리 중 오류 발생: {str(e)}")
+                    # 암호화 실패 시, 보안상 비밀번호 불일치로 처리
+                    return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
+
+                # 비밀번호 확인 (실제로는 해시 비교해야 함)
+                if org["password_hash"] != encrypted_input_password:  # 임시로 평문 비교
+                    return _resp(401, {"ok": False, "message": "비밀번호가 일치하지 않습니다."})
                 
-                print("[LOGIN] 인증 성공, JWT 토큰 발급")
                 # JWT 토큰 발급
                 token = issue_jwt(org["org_id"])
                 
-                print(f"[LOGIN] 로그인 성공 - org_id: {org['org_id']}, org_name: {org['org_name']}")
                 return _resp(200, {
                     "ok": True,
                     "token": token,
@@ -246,7 +222,6 @@ def login(event):
                 })
                 
     except Exception as e:
-        print(f"[LOGIN] 예외 발생: {str(e)}")
         return _resp(500, {"ok": False, "message": f"로그인 처리 중 오류가 발생했습니다: {str(e)}"})
 
 # 토큰 검증 함수
@@ -360,7 +335,8 @@ def create_business(event):
         address1 = escape_single_quotes(body.get("address"))
         address2 = escape_single_quotes(body.get("detailAddress"))
         mobile_phone = escape_single_quotes(body.get("mobilePhone"))
-        office_phone = escape_single_quotes(body.get("phone"))
+        office_phone_raw = body.get("phone")
+        office_phone = escape_single_quotes(office_phone_raw) if office_phone_raw and office_phone_raw.strip() else None
         description = escape_single_quotes(body.get("description"))
         
         print(f"파싱된 데이터 - group_name: {group_name}, contact_name: {contact_name}")
@@ -430,7 +406,8 @@ def update_business(event, business_id):
         address1 = escape_single_quotes(body.get("address"))
         address2 = escape_single_quotes(body.get("detailAddress"))
         mobile_phone = escape_single_quotes(body.get("mobilePhone"))
-        office_phone = escape_single_quotes(body.get("phone"))
+        office_phone_raw = body.get("phone")
+        office_phone = escape_single_quotes(office_phone_raw) if office_phone_raw and office_phone_raw.strip() else None
         description = escape_single_quotes(body.get("description"))
         
         # 입력 제한 검증 (수정 시에도 적용)
