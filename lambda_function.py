@@ -176,11 +176,13 @@ def login(event):
         
         with get_conn() as conn:
             with conn.cursor() as cur:
-                # 사업자 인증 확인
+                # 사업자 인증 확인 (같은 business_number가 여러 개일 경우 org_id가 가장 큰 값 선택)
                 cur.execute("""
                     SELECT org_id, org_name, password_hash 
                     FROM nm_organizations 
                     WHERE business_number = %s
+                    ORDER BY org_id DESC
+                    LIMIT 1
                 """, (business_number,))
                 
                 org = cur.fetchone()
