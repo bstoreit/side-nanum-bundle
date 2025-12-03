@@ -139,6 +139,8 @@ const AddGroupButton = styled.button`
   font-size: 0.9rem;
   font-weight: 500;
   transition: transform 0.2s ease;
+  white-space: nowrap;
+  min-width: fit-content;
 
   &:hover {
     transform: translateY(-1px);
@@ -149,6 +151,7 @@ const AddGroupButton = styled.button`
     padding: 1rem 1.5rem;
     font-size: 1rem;
     margin-bottom: 1rem;
+    white-space: normal;
   }
 `;
 
@@ -326,7 +329,7 @@ const Dashboard = ({ user, onLogout }) => {
       <MainContent>
         <LeftPanel isSplit={isSplit}>
           <AddGroupButton onClick={handleAddGroup}>
-            + 그룹 추가
+            + 신청명단 작성
           </AddGroupButton>
           <GroupGrid 
             groups={groups}

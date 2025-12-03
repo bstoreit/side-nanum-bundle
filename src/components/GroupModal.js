@@ -51,6 +51,10 @@ const ModalTitle = styled.h2`
   font-size: 1.5rem;
   font-weight: 600;
   color: #1e293b;
+  flex: 1;
+  margin-right: 1rem;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 
   @media (max-width: 768px) {
     font-size: 1.25rem;
@@ -759,7 +763,7 @@ const GroupModal = ({ group, onSave, onClose }) => {
         <ModalContent onClick={(e) => e.stopPropagation()}>
         <ModalHeader>
           <ModalTitle>
-            {group ? '그룹 수정' : '그룹 추가'}
+            {group ? '그룹 수정' : '신청명단 작성'}
           </ModalTitle>
           <CloseButton onClick={onClose}>×</CloseButton>
         </ModalHeader>
