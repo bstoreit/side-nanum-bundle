@@ -907,18 +907,18 @@ const TargetModal = ({ target, onSave, onClose }) => {
           </FormGroup>
 
           <FormGroup>
-            <Label htmlFor="directions">찾아가는길 (100자까지)</Label>
+            <Label htmlFor="directions">찾아가는길 (500자까지)</Label>
             <TextArea
               id="directions"
               name="directions"
               value={formData.directions}
               onChange={handleChange}
               placeholder="찾아가는길을 입력하세요"
-              maxLength="100"
+              maxLength="500"
               style={{ minHeight: '60px' }}
             />
             <div style={{ fontSize: '0.8rem', color: '#6b7280', textAlign: 'right', marginTop: '0.25rem' }}>
-              {formData.directions.length}/100
+              {formData.directions.length}/500
             </div>
           </FormGroup>
 
