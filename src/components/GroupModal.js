@@ -695,10 +695,6 @@ const GroupModal = ({ group, onSave, onClose }) => {
       newErrors.phoneLast = '일반전화 끝번호는 4자리여야 합니다.';
     }
     
-    if (formData.description && formData.description.length > 500) {
-      newErrors.description = '설명은 500자 이내로 입력해주세요.';
-    }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -737,7 +733,7 @@ const GroupModal = ({ group, onSave, onClose }) => {
         detailAddress: formData.detailAddress,
         mobilePhone: `${formData.mobilePhoneArea}${formData.mobilePhoneMiddle}${formData.mobilePhoneLast}`,
         phone: phone,
-        description: formData.description
+        description: null
       };
 
       await onSave(submitData);
@@ -759,8 +755,8 @@ const GroupModal = ({ group, onSave, onClose }) => {
           </Message>
         </MessageContainer>
       )}
-      <ModalOverlay onClick={onClose}>
-        <ModalContent onClick={(e) => e.stopPropagation()}>
+      <ModalOverlay>
+        <ModalContent>
         <ModalHeader>
           <ModalTitle>
             {group ? '그룹 수정' : '신청명단 작성'}
@@ -944,21 +940,6 @@ const GroupModal = ({ group, onSave, onClose }) => {
             {(errors.phoneMiddle || errors.phoneLast) && (
               <ErrorMessage>{errors.phoneMiddle || errors.phoneLast}</ErrorMessage>
             )}
-          </FormGroup>
-
-          <FormGroup>
-            <Label htmlFor="description">
-              설명
-            </Label>
-            <TextArea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="그룹에 대한 설명을 입력하세요"
-              className={errors.description ? 'error' : ''}
-            />
-            {errors.description && <ErrorMessage>{errors.description}</ErrorMessage>}
           </FormGroup>
 
           <ButtonGroup>
